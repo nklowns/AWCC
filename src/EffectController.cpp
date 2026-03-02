@@ -9,6 +9,11 @@
 #include <vector>
 using std::mt19937;
 
+EffectController::~EffectController() {
+    m_lightfx.deviceClose();
+    LOG_S(INFO) << "Effect Controller deinitialized";
+}
+
 void EffectController::Brightness(uint8_t value) {
     value = std::min<int>(value, 100);
     m_lightfx.deviceAcquire();

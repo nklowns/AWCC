@@ -116,6 +116,17 @@ int AcpiUtils::m_resolveDevicefromDatabase() {
             found = true;
         }
 
+        if (device.contains("keyboardZones") &&
+            device["keyboardZones"].is_array()) {
+            m_keyboardZones.clear();
+            for (const auto &zone : device["keyboardZones"]) {
+                if (zone.is_string()) {
+                    m_keyboardZones.push_back(
+                        std::stoul(zone.get<std::string>(), nullptr, 16));
+                }
+            }
+        }
+
         if (!found) {
             deviceInfo(true);
             return -1;
@@ -133,8 +144,7 @@ int AcpiUtils::m_resolveDevicefromDatabase() {
 
 AcpiUtils::~AcpiUtils() { LOG_S(INFO) << "ACPIUtils Module deinitialized"; }
 
-AcpiUtils::AcpiUtils(Daemon &daemon, bool testMode)
-    : m_daemon(daemon), m_testMode(testMode) {
+AcpiUtils::AcpiUtils(bool testMode) : m_testMode(testMode) {
     LOG_S(INFO) << "Initializing ACPIUtils Module";
     m_acpiPrefix = getPrefix();
     int resolveStatus = m_resolveDevicefromDatabase();
@@ -152,7 +162,7 @@ AcpiUtils::AcpiUtils(Daemon &daemon, bool testMode)
         // LOG_S(INFO) << "FeatureSet: " << m_featureSetBits;
         // LOG_S(INFO) << "ThermalModes: " << m_thermalModeBits;
         // LOG_S(INFO) << "LightingModes: " << m_lightingModesBits;
-        // if (m_daemon.isDaemonRunning())
+        // if (m_daemon->isDaemonRunning())
         //     LOG_S(WARNING) << "Daemon is running, commands will be sent to
         //     daemon";
         // else
@@ -183,8 +193,8 @@ int AcpiUtils::executeAcpiCommand(int arg1, int arg2, int arg3, int arg4) {
     return 0;
 #else
     if (std::filesystem::exists("/proc/acpi/call")) {
-        if (m_daemon.isDaemonRunning()) {
-            result = m_daemon.executeFromDaemon(command.c_str());
+        if (m_daemon != nullptr && m_daemon->isDaemonRunning()) {
+            result = m_daemon->executeFromDaemon(command.c_str());
             if (!result.contains("error")) {
                 if (!result.empty() && result.back() == '\n')
                     result.pop_back();
@@ -372,7 +382,8 @@ bool AcpiUtils::setTurboBoost(bool enable) {
         return false;
     }
 
-    // Assume m_daemon.executeFromDaemon(cmd) returns true on success
-    m_daemon.executeFromDaemon(cmd.c_str());
+    // Assume m_daemon->executeFromDaemon(cmd) returns true on success
+    if (m_daemon)
+        m_daemon->executeFromDaemon(cmd.c_str());
     return true;
 }
